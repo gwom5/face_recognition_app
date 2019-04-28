@@ -11,8 +11,6 @@ import Rank from './components/Rank/Rank';
 import './App.css';
 
 
-
-
 const app = new Clarifai.App({
     apiKey: '74448d5657014f9ea8656877db501479'
 });
@@ -38,6 +36,8 @@ const particlesOptions= {
 
     }
 }
+
+
 class App extends Component {
     constructor(){
         super();
@@ -46,9 +46,20 @@ class App extends Component {
             imageUrl: '',
             box:'',
             route:'signin',
-            isSignedIn: false
+            isSignedIn: false,
+            user:{
+               id: '',
+               name: '',
+               email: '',
+               entries: 0,
+               joined: ''
+            }
         }
     }
+
+    /*componentDidMount(){
+        fetch('http://localhost:3000/').then(response=>response.json()).then(console.log);
+    }*/
 
     calculateFaceLocation=(obj)=>{
         const clarifaiFace = obj.outputs[0].data.regions[0].region_info.bounding_box;
@@ -81,18 +92,43 @@ class App extends Component {
 
         //make call to clarifai API by passing the model to use and the URL of the image, in the input box
         app.models.predict(Clarifai.FACE_DETECT_MODEL, this.state.input)
-            .then(response=> this.displayFaceBox(this.calculateFaceLocation(response)))//call calculateFaceLocation with received response to determine where the box will be placed, on the detected face. Then call displayFaceBox to add borders to the image
-            .catch(err=>console.log(err));
+            .then(response=>{
+                if(response){
+                    fetch('http://localhost:3000/image', {
+                        method: 'put',
+                        headers:{'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            id: this.state.user.id
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(count=>
+                            this.setState(Object.assign(this.state.user, {entries: count}))
+                        )
+                }
+                this.displayFaceBox(this.calculateFaceLocation(response))//call calculateFaceLocation with received response to determine where the box will be placed, on the detected face. Then call displayFaceBox to add borders to the image
+                    .catch(err=>console.log(err));
+            })
+
     }
 
-    onRouteChange=(route)=>{
-        if(route === 'signOut'){
-            this.setState({isSignedIn: false});
-        }
-        else if(route === 'home'){
+    onRouteChange = (route) => {
+        if (route === 'signout') {
+            this.setState({isSignedIn: false})
+        } else if (route === 'home') {
             this.setState({isSignedIn: true})
         }
         this.setState({route: route});
+    }
+
+    loadUser = (data) => {
+        this.setState({user: {
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            entries: data.entries,
+            joined: data.joined
+        }})
     }
 
     render(){
@@ -105,7 +141,7 @@ class App extends Component {
                 this.state.route === 'home'
                     ? <div>
                         <Logo/>
-                        <Rank/>
+                        <Rank name= {this.state.user.name} entries = {this.state.user.entries} />
                         <ImageLinkForm onInputChange={this.onInputChange} onButtonSubmit={this.onButtonSubmit}/>
                         <FaceRecognition box={this.state.box} imageUrl={this.state.imageUrl}/>
                     </div>
@@ -113,9 +149,9 @@ class App extends Component {
 
                     : (
                         this.state.route === 'signin' ?
-                            <SignIn onRouteChange={this.onRouteChange}/>
+                            <SignIn loadUser ={this.loadUser} onRouteChange={this.onRouteChange}/>
                             :
-                            <Register onRouteChange={this.onRouteChange}/>
+                            <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
                     )
             }
 
