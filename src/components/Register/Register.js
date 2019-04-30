@@ -34,10 +34,10 @@ class Register  extends Component{
                 name: this.state.name
             })
         })
-            .then(response => response.json())
+            .then(response => {return response.json()})
             .then(user => {
                 if (user.id) {
-                    this.props.loadUser(user)
+                    this.props.loadUser(user);
                     this.props.onRouteChange('home');
                 }
             }).catch(err=> console.log("could not register"));
