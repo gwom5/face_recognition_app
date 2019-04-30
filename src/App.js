@@ -1,6 +1,5 @@
 import React, {Component} from 'react';
 import Particles from 'react-particles-js';
-import Clarifai from 'clarifai';
 import SignIn from './components/SignIn/SignIn';
 import Register from './components/Register/Register';
 import FaceRecognition from './components/FaceRecognition/FaceRecognition';
@@ -10,10 +9,6 @@ import ImageLinkForm from './components/ImageLinkForm/ImageLinkForm';
 import Rank from './components/Rank/Rank';
 import './App.css';
 
-
-const app = new Clarifai.App({
-    apiKey: '74448d5657014f9ea8656877db501479'
-});
 
 const particlesOptions= {
     particles:{
@@ -37,29 +32,25 @@ const particlesOptions= {
     }
 }
 
-
+const initialState  = {
+    input: '',
+    imageUrl: '',
+    box: '',
+    route: 'signin',
+    isSignedIn: false,
+    user: {
+        id: '',
+        name: '',
+        email: '',
+        entries: 0,
+        joined: ''
+    }
+}
 class App extends Component {
     constructor(){
         super();
-        this.state = {
-            input: '',
-            imageUrl: '',
-            box:'',
-            route:'signin',
-            isSignedIn: false,
-            user:{
-               id: '',
-               name: '',
-               email: '',
-               entries: 0,
-               joined: ''
-            }
-        }
+        this.state = initialState;
     }
-
-    /*componentDidMount(){
-        fetch('http://localhost:3000/').then(response=>response.json()).then(console.log);
-    }*/
 
     calculateFaceLocation=(obj)=>{
         const clarifaiFace = obj.outputs[0].data.regions[0].region_info.bounding_box;
@@ -88,38 +79,45 @@ class App extends Component {
     onButtonSubmit=()=>{
 
         //set the state of the input box to contain the image URL
-        this.setState({imageUrl:this.state.input});
-
-        //make call to clarifai API by passing the model to use and the URL of the image, in the input box
-        app.models.predict(Clarifai.FACE_DETECT_MODEL, this.state.input)
-            .then(response=>{
-                if(response){
+        this.setState({imageUrl: this.state.input});
+        fetch('http://localhost:3000/imageUrl', {
+            method: 'post',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                input: this.state.input
+            })
+        })
+            .then(response =>response.json())
+            .then(response => {
+                if (response) {
                     fetch('http://localhost:3000/image', {
                         method: 'put',
-                        headers:{'Content-Type': 'application/json'},
+                        headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
                             id: this.state.user.id
                         })
-                    })
-                        .then(response => response.json())
-                        .then(count=>
-                            this.setState(Object.assign(this.state.user, {entries: count}))
-                        )
-                }
-                this.displayFaceBox(this.calculateFaceLocation(response))//call calculateFaceLocation with received response to determine where the box will be placed, on the detected face. Then call displayFaceBox to add borders to the image
-                    .catch(err=>console.log(err));
-            })
+                    }).then(response => response.json())
+                        .then(count => {
+                            this.setState(Object.assign(this.state.user, { entries: count}))
+                        }).catch(err=>console.log(err))
 
+                }
+                this.displayFaceBox(this.calculateFaceLocation(response))
+            })
+            .catch(err => console.log(err));
     }
+
+
 
     onRouteChange = (route) => {
         if (route === 'signout') {
-            this.setState({isSignedIn: false})
+            this.setState(initialState)
         } else if (route === 'home') {
             this.setState({isSignedIn: true})
         }
         this.setState({route: route});
     }
+
 
     loadUser = (data) => {
         this.setState({user: {

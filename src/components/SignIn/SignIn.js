@@ -28,10 +28,10 @@ class SignIn extends Component{
                 password: this.state.signInPassword
             })
         })
-            .then(response => response.json())
+            .then(response =>{return response.json()})
             .then(user => {
-                if (user.id) {
-                    this.props.loadUser(user)
+                if (user[0].id) {
+                    this.props.loadUser(user[0])
                     this.props.onRouteChange('home');
                 }
             })
